@@ -31,5 +31,10 @@ if os.path.splitext(audio_path)[-1] != ".wav":
 audio, sr = lbr.load(audio_path)
 descriptors = generate_features(audio, sr)
 
+
+
 kmeans = KMeans(n_clusters=expected_speaker_amount).fit(descriptors)
 # To Do: el resto del código xd
+# Con el kmeans, agrupamos las ventanas consecutivas del mismo cluster
+# https://stackoverflow.com/questions/36195457/how-to-get-the-samples-in-each-cluster
+# Por ejemplo, si la ventanas 1, 2, 3, 4, 5 son del cluster 1, entonces en el archivo de resultados, marcamos que el speaker 1 habla desde la ventana 1 a a la 5
