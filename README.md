@@ -24,7 +24,8 @@ Al correr el programa con 3 voces, entrega un resultado tal que así:
 6500	7000	0
 7000	7500	2
 7500	8000	0
-8000	8500	2```
+8000	8500	2
+```
 
 Que indica que desde el milisegundo 0 al milisegundo 500 habla la voz 1, desde 500 a 100 la voz 2, desde 100 a 350 la voz 1, etc.
 
