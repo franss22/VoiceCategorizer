@@ -13,8 +13,8 @@ Los argumentos son:
 ### Ejemplo
 Al correr el programa con 3 voces, entrega un resultado tal que así:
 ```
-0  500  1
-500  1000	2
+0	500	1
+500	1000	2
 1000	2500	1
 2500	4500	2
 4500	5000	1
