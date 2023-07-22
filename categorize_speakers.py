@@ -5,7 +5,8 @@ import scipy as sp
 from sklearn.cluster import KMeans
 import numpy as np
 import random
-WINDOW_TIME_S = 0.128 # Window time en s
+from constants import *
+
 
 def generate_features(audio, sr):
     '''
@@ -29,6 +30,9 @@ if len(sys.argv) < 4:
 audio_path = sys.argv[1]
 try:
     expected_speaker_amount = int(sys.argv[2])
+    if expected_speaker_amount <1:
+        print(f"ERROR: [speaker_amount]: {sys.argv[2]} must be a positive integer")
+        sys.exit(1)
 except:
     print(f"ERROR: [speaker_amount]: {sys.argv[2]} is not an int")
 output_file = sys.argv[3]
@@ -57,11 +61,11 @@ w_f = 0
 with open(output_file, "w") as f:
     for index, speaking in enumerate(kmeans.labels_):
         if speaking != previous_speaker:
-            f.write(f"{w_i*WINDOW_TIME_S}\t{w_f*WINDOW_TIME_S}\t{previous_speaker}\n")
-            w_i = index
             w_f = index
+            f.write(f"{w_i*WINDOW_TIME_MS}\t{w_f*WINDOW_TIME_MS}\t{previous_speaker}\n")
+            w_i = index
             previous_speaker = speaking
         else:
             w_f = index
-    f.write(f"{w_i*WINDOW_TIME_S}\t{w_f*WINDOW_TIME_S}\t{previous_speaker}")
+    f.write(f"{w_i*WINDOW_TIME_MS}\t{w_f*WINDOW_TIME_MS}\t{previous_speaker}")
 print("Done!")

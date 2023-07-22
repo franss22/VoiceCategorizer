@@ -1,0 +1,2 @@
+WINDOW_TIME_MS = 500 # Window time en s
+SEGMENTS_PER_SPEAKER = 7
