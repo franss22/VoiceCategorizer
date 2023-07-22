@@ -27,7 +27,7 @@ Al correr el programa con 3 voces, entrega un resultado tal que así:
 8000	8500	2
 ```
 
-Que indica que desde el milisegundo 0 al milisegundo 500 habla la voz 1, desde 500 a 100 la voz 2, desde 100 a 350 la voz 1, etc.
+Que indica que desde el milisegundo 0 al milisegundo 500 habla la voz 1, desde 500 a 1000 la voz 2, desde 1000 a 2500 la voz 1, etc.
 
 ## Testing
 Para testear y ajustar el programa se utiliza el dataset [Speaker Recognition - CMU ARCTIC](https://www.kaggle.com/datasets/mrgabrielblins/speaker-recognition-cmu-arctic) que consiste en una multitud de clips cortos de (de entre 1 a 5 segundos, aproximadamente), hablados por 18 personas distintas. 
