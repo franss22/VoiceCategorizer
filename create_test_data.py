@@ -36,6 +36,11 @@ if os.path.exists(output_name + ".wav"):
 speakers = os.listdir(training_data_dir)
 chosen_speakers = random.choices(speakers, k=speaker_amount)
 
+# Para no obtener un numero menor de speakers 
+while len(list(set(chosen_speakers))) < speaker_amount:
+    chosen_speakers = random.choices(speakers, k=speaker_amount)
+
+
 speakers_and_audios = []
 for sp in chosen_speakers:
     files_dir = os.path.join(training_data_dir, sp)
@@ -44,12 +49,10 @@ for sp in chosen_speakers:
     files = random.choices(files, k=SEGMENTS_PER_SPEAKER)
     speakers_and_audios += [(sp, f) for f in files]
 
-
-
 random.shuffle(speakers_and_audios)
 
 
-def generateCompleteAudio(speaker_and_file_list:list[tuple[any, str]]):
+def generateCompleteAudio(speaker_and_file_list):
     completeAudio = None
     with open(output_name + ".txt", "w") as txt:
         remainder = 0

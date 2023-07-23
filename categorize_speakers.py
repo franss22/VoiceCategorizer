@@ -7,15 +7,28 @@ import numpy as np
 import random
 from constants import *
 
-
-def generate_features(audio, sr):
+def generate_features(audio,sr):
     '''
     Genera las features de cada window y las guarda en una lista de vectores
     '''
-    data = []
-    for i in range(500):
-        data.append([random.randrange(0, 100)])
-    return np.array(data)
+    samples_por_ventana = 8192
+    samples_salto = 8192
+    dimension = 64
+
+    #samples, sr = lbr.load(archivo_wav)
+
+    mfcc = lbr.feature.mfcc(y=audio, sr=sr, n_mfcc=dimension, n_fft=samples_por_ventana, hop_length=samples_salto)
+
+    descriptores = mfcc.transpose()
+
+    #TODO
+    # Creo que ahora debiese normalizar los samples por ventana antes de pasar los descriptores
+
+    #data = []
+    #data.append([mfcc])
+    #for i in range(500):
+    #    data.append([random.randrange(0, 100)])
+    return np.array(descriptores)
 
     # raise NotImplementedError()
 
@@ -45,13 +58,15 @@ if os.path.splitext(audio_path)[-1] != ".wav":
     print(f"ERROR: [audio_file]: {audio_path} is not a .wav file")
     sys.exit(1)
 
-audio, sr = (0, 0)#lbr.load(audio_path)
+audio, sr = lbr.load(audio_path) #(0, 0)
 print("Calculating descriptors...")
-descriptors = generate_features(audio, sr)
+descriptors = generate_features(audio,sr)
+
+print(f"Shape de descriptors es: {descriptors.shape}")
 
 
 print("Clustering data...")
-kmeans = KMeans(n_clusters=expected_speaker_amount, n_init="auto").fit(descriptors)
+kmeans = KMeans(n_clusters=expected_speaker_amount).fit(descriptors)
 
 
 print("Saving results...")
