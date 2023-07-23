@@ -3,8 +3,28 @@ from pydub import AudioSegment
 import sys
 import random
 from constants import *
+import subprocess 
 
+def get_duration(file):
+    """Get the duration of a video using ffprobe."""
+    cmd = 'ffprobe -i {} -show_entries format=duration -v quiet -of csv="p=0"'.format(file)
+    output = subprocess.check_output(
+        cmd,
+        shell=True, # Let this run in the shell
+        stderr=subprocess.STDOUT
+    )
+    # return round(float(output))  # ugly, but rounds your seconds up or down
+    return round(float(output)*1000)
 # create_test_data [training_data_dir] [speaker_amount] [output_file]
+
+def concat_from_file(list_file, output):
+    cmd = f"ffmpeg -f concat -safe 0 -i {list_file} -c copy {output}.wav"
+    output = subprocess.check_output(
+        cmd,
+        shell=True, # Let this run in the shell
+        stderr=subprocess.STDOUT
+    )
+    return output
 
 if len(sys.argv) < 4:
     print(
@@ -51,26 +71,32 @@ for sp in chosen_speakers:
 
 random.shuffle(speakers_and_audios)
 
+dd = 0
+for sp, au in speakers_and_audios:
+    aa = AudioSegment.from_wav(au)
+    dd += get_duration(au)
+    print(sp, au, get_duration(au))
+print(dd)
+
+def gen_list_file(speaker_and_file_list):
+    list_file = "concat"
+    with open(list_file, "w") as f:
+        for sp, file in speaker_and_file_list:
+            f.write(f"file '{file}'\n")
+    return list_file
 
 def generateCompleteAudio(speaker_and_file_list):
-    completeAudio = None
     with open(output_name + ".txt", "w") as txt:
         remainder = 0
         i = 0
         lines = []
         for speaker,filename in speaker_and_file_list:
-            sound: AudioSegment = AudioSegment.from_wav(filename)
-            if completeAudio is None:
-                completeAudio = sound
-            else:
-                completeAudio = completeAudio.append(sound)
-
-            duration_ms = len(sound)
+            duration_ms = get_duration(au)
             first_segment = WINDOW_TIME_MS-remainder
             full_segments = (duration_ms-first_segment)//WINDOW_TIME_MS
             last_segment = (duration_ms-first_segment)%WINDOW_TIME_MS
             
-            segment_amt = full_segments+1 if last_segment>0 else full_segments
+            segment_amt = full_segments if last_segment>0 else full_segments-1
             
 
             lines.append(f"{i*WINDOW_TIME_MS+remainder}\t{(i+1)*WINDOW_TIME_MS}\t{speaker}\n")
@@ -82,7 +108,8 @@ def generateCompleteAudio(speaker_and_file_list):
                 i+=1
             lines.append(f"{i*WINDOW_TIME_MS}\t{i*WINDOW_TIME_MS+last_segment}\t{speaker}\n")
         txt.writelines(lines)
-    completeAudio.export(out_f=output_name+".wav", format="wav")
+    concat_from_file(gen_list_file(speaker_and_file_list), output_name)
+    print(len(AudioSegment.from_wav(output_name+".wav")))
 
 
         
