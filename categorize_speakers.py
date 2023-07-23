@@ -11,8 +11,9 @@ def generate_features(audio,sr):
     '''
     Genera las features de cada window y las guarda en una lista de vectores
     '''
-    samples_por_ventana = 8192
-    samples_salto = 8192
+    samples_por_ventana = int(WINDOW_TIME_MS*sr/1000)
+    print(samples_por_ventana)
+    samples_salto = samples_por_ventana
     dimension = 64
 
     #samples, sr = lbr.load(archivo_wav)
@@ -66,7 +67,7 @@ print(f"Shape de descriptors es: {descriptors.shape}")
 
 
 print("Clustering data...")
-kmeans = KMeans(n_clusters=expected_speaker_amount).fit(descriptors)
+kmeans = KMeans(n_clusters=expected_speaker_amount, n_init="auto").fit(descriptors)
 
 
 print("Saving results...")
