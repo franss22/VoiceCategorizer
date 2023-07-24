@@ -9,24 +9,24 @@ import pandas as pd
 from constants import *
 
 def VoiceActivityDetection(wavData):
-    # uses the librosa library to compute short-term energy
-    ste = lbd.feature.rms(y=wavData,hop_length=int(SR/FRAMERATE)).T
-    thresh = 0.1*(np.percentile(ste,97.5) + 9*np.percentile(ste,2.5))    # Trim 5% off and set threshold as 0.1x of the ste range
+    ste = lbd.feature.rms(y=wavData,hop_length=int(SR/FRAMERATE)).T # Se calcula el short term energy
+    thresh = 0.1*(np.percentile(ste,97.5) + 9*np.percentile(ste,2.5))    
     return (ste>thresh).astype('bool')
 
 def trainGMM(wavData, vad2):
     global mfcc
     global vad
-    mfcc = lbd.feature.mfcc(y=wavData, sr=SR, n_mfcc=32,hop_length=int(SR/FRAMERATE)).T
+    mfcc = lbd.feature.mfcc(y=wavData, sr=SR, n_mfcc=DIMENSIONS,hop_length=int(SR/FRAMERATE)).T
     vad = np.reshape(vad2,(len(vad2),))
+    # Se filtran los casos computados con VoiceActivityDetection
     if mfcc.shape[0] > vad.shape[0]:
         vad = np.hstack((vad,np.zeros(mfcc.shape[0] - vad.shape[0]).astype('bool'))).astype('bool')
     elif mfcc.shape[0] < vad.shape[0]:
         vad = vad[:mfcc.shape[0]]
-    mfcc = mfcc[vad,:];
+    mfcc = mfcc[vad,:]
+
     print("Training GMM..")
     GMM = GaussianMixture(n_components=5,covariance_type='diag').fit(mfcc)
-    var_floor = 1e-5
     segLikes = []
     segSize = FRAMERATE*SEGLEN
     for segI in range(int(np.ceil(float(mfcc.shape[0])/(FRAMERATE*SEGLEN)))):
@@ -43,15 +43,18 @@ def trainGMM(wavData, vad2):
 
     return np.asarray(segLikes)
 
-def SegmentFrame(clust, numFrames):
+def SegmentFrame(clust, numFrames): # Se agrupan los clusters
     frameClust = np.zeros(numFrames)
     for clustI in range(len(clust)-1):
         frameClust[clustI*SEGLEN*FRAMERATE:(clustI+1)*SEGLEN*FRAMERATE] = clust[clustI]*np.ones(SEGLEN*FRAMERATE)
     frameClust[(clustI+1)*SEGLEN*FRAMERATE:] = clust[clustI+1]*np.ones(numFrames-(clustI+1)*SEGLEN*FRAMERATE)
     return frameClust
 
-def speakerdiarisationdf(hyp, wavFile):
+def speakerdiarisationdf(wavFile): # funcion que permite encasillar los distintos hablantes
     
+    hyp = -1*np.ones(len(vad))
+    hyp[vad] = frameClust
+
     starttime=[]
     endtime=[]
     speakerlabel=[]
@@ -64,16 +67,14 @@ def speakerdiarisationdf(hyp, wavFile):
         spkrLabels.append(hyp[spkrChangePoints[spkrHomoSegI]+1])
     for spkrI,spkr in enumerate(spkrLabels[:-1]):
         if spkr!=-1:
-            #audioname.append(wavFile.split('/')[-1].split('.')[0]+".wav")
             starttime.append((spkrChangePoints[spkrI]+1)/float(FRAMERATE))
             endtime.append((spkrChangePoints[spkrI+1]-spkrChangePoints[spkrI])/float(FRAMERATE))
             speakerlabel.append("Speaker "+str(int(spkr)))
     if spkrLabels[-1]!=-1:
-        #audioname.append(wavFile.split('/')[-1].split('.')[0]+".wav")
         starttime.append(spkrChangePoints[-1]/float(FRAMERATE))
         endtime.append((len(hyp) - spkrChangePoints[-1])/float(FRAMERATE))
         speakerlabel.append("Speaker "+str(int(spkrLabels[-1])))
-    #
+    
     speakerdf=pd.DataFrame({"starttime":starttime,"endtime":endtime,"speakerlabel":speakerlabel})
     
     spdatafinal=pd.DataFrame(columns=['SpeakerLabel','StartTime','EndTime'])
@@ -120,7 +121,7 @@ if os.path.splitext(audio_path)[-1] != ".wav":
     print(f"ERROR: [audio_file]: {audio_path} is not a .wav file")
     sys.exit(1)
 
-wavData,SR = lbd.load(audio_path)
+wavData, SR = lbd.load(audio_path)
 
 vad=VoiceActivityDetection(wavData)
 mfcc = []
@@ -129,18 +130,18 @@ clusterset = trainGMM(wavData, vad)
 
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(clusterset)  
-# Normalizing the data so that the data approximately 
-# follows a Gaussian distribution
+
+# Se normalizan los datos
 X_normalized = normalize(X_scaled)
 
-cluster = AgglomerativeClustering(n_clusters=expected_speaker_amount, affinity='euclidean', linkage='ward') 
+# Se aglomeran los clusters para que quede solo el numero expuesto es expected_speaker_amount
+cluster = AgglomerativeClustering(n_clusters=expected_speaker_amount, metric='euclidean', linkage='ward') 
 clust=cluster.fit_predict(X_normalized)
 
 frameClust = SegmentFrame(clust, mfcc.shape[0])
 
-pass1hyp = -1*np.ones(len(vad))
-pass1hyp[vad] = frameClust
-spkdf=speakerdiarisationdf(pass1hyp, audio_path)
+spkdf=speakerdiarisationdf(audio_path)
+
 spkdf["TimeSeconds"]=spkdf.EndTime-spkdf.StartTime
 
 if os.path.exists(output_file):

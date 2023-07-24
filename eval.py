@@ -74,5 +74,14 @@ for start, end, correct, expected, found in correctness:
         bad +=1
 print(f"Correct identifications: {good}\nWrong identifications: {bad}\nUnknown: {none}")
 
+# Accuracy 
+
+acc = good/(good + bad + none)*100
+print(f"Accuracy: {acc}")
+
+# Precision
+pres = good/(good + bad)*100
+print(f"Precision: {pres}")
+
     
 
