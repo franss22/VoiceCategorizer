@@ -1,6 +1,6 @@
 import sys
 from constants import *
-
+from itertools import permutations
 if len(sys.argv) < 3:
     print("Uso: {} [predicted_data_txt] [base_truth_txt]".format(sys.argv[0]))
     sys.exit(1)
@@ -27,7 +27,6 @@ with open(base_truth_txt, "r") as source:
 
 # print(base_truth)
 
-identified_speakers = {}
 interval = 0
 def find_speaker(start_ms, end_ms, res):
     start_s = start_ms/1000
@@ -41,47 +40,137 @@ def find_speaker(start_ms, end_ms, res):
     return None, None
 
 
-correctness = []
+windows = []
 
-sp = None
-for start, end, speaker in base_truth:
-    
+found_sp = None
+base_speakers = []
+found_speakers = []
+for start, end, bsp in base_truth:
+    base_speakers.append(bsp)
     if interval == 0:
-        sp, duration = find_speaker(start, end, results)
-        if sp is None:
-            correctness.append((start, end, None, identified_speakers.get(speaker, None), None))
+        found_sp, duration = find_speaker(start, end, results)
+        if found_sp is None:
+            windows.append((start, end, bsp, None))
             continue
-        if sp is not None:
+        if found_sp is not None:
             interval = duration//WINDOW_TIME_MS+1
     interval-=1
-    id_sp = identified_speakers.setdefault(speaker, sp)
-    correctness.append((start, end, id_sp == sp, id_sp, sp))
-with open("Eval_results.tsv", "w") as f:
-    f.write("#start\tend\tcorrect\texpected_speaker\tfound_speaker\n")
-    for line in correctness:
-        l = [str(x) for x in line]
-        f.write("\t".join(l)+"\n")
+    found_speakers.append(found_sp)
+    windows.append((start, end, bsp, found_sp))
+base_speakers = list(set(base_speakers))
+found_speakers = list(set(found_speakers))
 
-# print(correctness)
+speaker_amount = len(base_speakers)
+
+def classify():
+    '''
+    Returns a dictionnary with each found speaker (speaker 1, speaker 2, etc), 
+    with a dictionnary of how many times it was classified as each base speaker (axb, aup, etc)
+    '''
+    classification = {}
+    for found_sp in found_speakers:
+        classification[found_sp] = {}
+        for base_sp in base_speakers:
+            classification[found_sp][base_sp] = 0
+
+    for start, end, expected_sp, found_sp in windows:
+        if found_sp is None:
+            continue
+        classification[found_sp][expected_sp]+=1
+    return classification
+
+classification = classify()
+print(classification)
+
+err = {}
+total_val = 0
+for fsp in classification:
+    err[fsp] = {}
+    total = sum(classification[fsp].values())
+    total_val += total
+    for bsp in classification[fsp]:
+        err[fsp][bsp] = total-classification[fsp][bsp]
+
+
+# We assign each found speaker to a different base speaker, minimizing the error
+
+min_err = len(base_truth)
+
+alias = {}
+for opt in permutations(base_speakers):
+    opt_err = 0
+    for i in range(speaker_amount):
+        fsp = found_speakers[i]
+        bsp = opt[i]
+        opt_err += err[fsp][bsp]
+    if opt_err < min_err:
+        min_err = opt_err
+        alias = {found_speakers[i]:opt[i] for i in range(speaker_amount)}
+
+
+
+
+
+
+
+# print(windows)
 good, bad, none = (0, 0, 0)
-for start, end, correct, expected, found in correctness:
+speaker_correctness = {}
+for sp in base_speakers:
+    
+    speaker_correctness[sp]= {
+        "tp":0,
+        "fp":0,
+        "fn":0
+    }
+
+def determine_correctness(expected, found, assign=alias):
+    if found is None:
+        return None
+    else:
+        return assign[found] == expected
+
+for start, end, expected, found in windows:
+    correct = determine_correctness(expected, found)
     if correct is None:
+        speaker_correctness[expected]["fn"] +=1
         none +=1
-        bad+=1
+        # bad+=1
     elif correct is True:
+        speaker_correctness[expected]["tp"] +=1
         good +=1
     else:
+        speaker_correctness[expected]["fn"] +=1
+        speaker_correctness[expected]["fp"] +=1
         bad +=1
 print(f"Correct identifications: {good}\nWrong identifications: {bad}\nUnknown: {none}")
 
-# Accuracy 
 
-acc = good/(good + bad + none)*100
-print(f"Accuracy: {acc}")
+total_recall = 0
+total_precision = 0
+total_fscore = 0
+for bsp, stats in speaker_correctness.items():
+    print(f"Speaker {bsp}, identified as {[k for k, v in alias.items() if v == bsp][0]}:")
+    precision = stats["tp"]/(stats["tp"]+stats["fp"])
+    total_precision+=precision
+    recall = stats["tp"]/(stats["tp"]+stats["fn"])
+    total_recall+=recall
+    fscore = 2*(precision*recall)/(precision+recall)
+    total_fscore+=fscore
+    print(f"- Precision: {precision*100:.2f}")
+    print(f"- Recall: {recall*100:.2f}")
+    print(f"- F1-Score: {fscore*100:.2f}")
 
-# Precision
-pres = good/(good + bad)*100
-print(f"Precision: {pres}")
 
-    
+
+avg_precision = total_precision/speaker_amount
+avg_recall = total_recall/speaker_amount
+avg_fscore = total_fscore/speaker_amount
+print(f"Average Precision: {avg_precision:.2f}")
+print(f"Average Recall: {avg_recall:.2f}")
+print(f"Average F1-Score: {avg_fscore:.2f}")
+
+
+with open("_eval.txt", "a") as f:
+    f.write(f"{avg_precision}\t{avg_recall}\t{avg_fscore}\n")
 
