@@ -1,4 +1,4 @@
-WINDOW_TIME_MS = 500 # Window time en s
+WINDOW_TIME_MS = 100 # Window time en s
 SEGMENTS_PER_SPEAKER = 5
 SEGLEN = 3
 FRAMERATE = 50
