@@ -51,7 +51,7 @@ def SegmentFrame(clust, numFrames):
     return frameClust
 
 def speakerdiarisationdf(hyp, wavFile):
-    #audioname=[]
+    
     starttime=[]
     endtime=[]
     speakerlabel=[]
@@ -121,7 +121,7 @@ if os.path.splitext(audio_path)[-1] != ".wav":
     sys.exit(1)
 
 wavData,SR = lbd.load(audio_path)
-#HOP = int(WINDOW_TIME_MS*sr/1000)
+
 vad=VoiceActivityDetection(wavData)
 mfcc = []
 
@@ -147,6 +147,13 @@ if os.path.exists(output_file):
     print("Deleting old output_files {}".format(output_file))
     os.remove(output_file)
 
+
+result_as_dict = spkdf.to_dict(orient='records')
+
+results_txt = ""
+for record in result_as_dict:
+    results_txt += record['SpeakerLabel'] + "\t" + str(record['StartTime']) + "\t" + str(record['EndTime']) + "\t" + str(record['TimeSeconds']) + "\n"
+
+
 with open(output_file, 'a') as f:
-    df_string = spkdf.to_string(header=False, index=False)
-    f.write(df_string)
+    f.write(results_txt)
