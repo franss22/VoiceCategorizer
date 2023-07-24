@@ -16,7 +16,7 @@ with open(predicted_data_txt) as source:
         name, start, end, duration = line.split('\t')
         results.append([name, float(start), float(end), float(duration)])
 
-print(results)
+# print(results)
 
 base_truth = []
 with open(base_truth_txt, "r") as source:
@@ -62,7 +62,17 @@ with open("Eval_results.tsv", "w") as f:
         l = [str(x) for x in line]
         f.write("\t".join(l)+"\n")
 
-print(correctness)
+# print(correctness)
+good, bad, none = (0, 0, 0)
+for start, end, correct, expected, found in correctness:
+    if correct is None:
+        none +=1
+        bad+=1
+    elif correct is True:
+        good +=1
+    else:
+        bad +=1
+print(f"Correct identifications: {good}\nWrong identifications: {bad}\nUnknown: {none}")
 
     
 
