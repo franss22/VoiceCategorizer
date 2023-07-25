@@ -15,7 +15,7 @@ with open(predicted_data_txt) as source:
         line = line.replace('\n','')
         name, start, end, duration = line.split('\t')
         results.append([name, float(start), float(end), float(duration)])
-
+found_speakers = list(set([name for name, s, e, d in results]))
 # print(results)
 
 base_truth = []
@@ -25,6 +25,8 @@ with open(base_truth_txt, "r") as source:
         start, end, name = line.split('\t')
         base_truth.append([int(start), int(end), name])
 
+
+base_speakers = list(set([name for s, e, name in base_truth]))
 # print(base_truth)
 
 interval = 0
@@ -43,22 +45,18 @@ def find_speaker(start_ms, end_ms, res):
 windows = []
 
 found_sp = None
-base_speakers = []
-found_speakers = []
+
 for start, end, bsp in base_truth:
-    base_speakers.append(bsp)
-    if interval == 0:
-        found_sp, duration = find_speaker(start, end, results)
-        if found_sp is None:
-            windows.append((start, end, bsp, None))
-            continue
-        if found_sp is not None:
-            interval = duration//WINDOW_TIME_MS+1
-    interval-=1
-    found_speakers.append(found_sp)
+    found_sp, duration = find_speaker(start, end, results)
+    if found_sp is None:
+        windows.append((start, end, bsp, None))
+        continue
+
     windows.append((start, end, bsp, found_sp))
-base_speakers = list(set(base_speakers))
-found_speakers = list(set(found_speakers))
+
+print(windows)
+print(base_speakers)
+print(found_speakers)
 
 speaker_amount = len(base_speakers)
 
@@ -151,11 +149,11 @@ total_precision = 0
 total_fscore = 0
 for bsp, stats in speaker_correctness.items():
     print(f"Speaker {bsp}, identified as {[k for k, v in alias.items() if v == bsp][0]}:")
-    precision = stats["tp"]/(stats["tp"]+stats["fp"])
+    precision = stats["tp"]/(stats["tp"]+stats["fp"]+0.000001)
     total_precision+=precision
-    recall = stats["tp"]/(stats["tp"]+stats["fn"])
+    recall = stats["tp"]/(stats["tp"]+stats["fn"]+0.000001)
     total_recall+=recall
-    fscore = 2*(precision*recall)/(precision+recall)
+    fscore = 2*(precision*recall)/(precision+recall+0.000001)
     total_fscore+=fscore
     print(f"- Precision: {precision*100:.2f}")
     print(f"- Recall: {recall*100:.2f}")
